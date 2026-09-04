@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>SitAndDoStuff</AssemblyName>
+    <RootNamespace>SitAndDoStuff</RootNamespace>
+
+    <!-- These two lines let the build package find your local Stardew Valley + SMAPI install
+         automatically. If it can't find it, set GamePath in a GamePath.user.props file or
+         via the GAME_PATH environment variable — see Pathoschild.Stardew.ModBuildConfig docs. -->
+    <EnableHarmony>true</EnableHarmony>
+    <IgnoreModWarnings>false</IgnoreModWarnings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- This package auto-references Stardew Valley.dll, StardewModdingAPI.dll, etc. from your
+         local game install, and packages/deploys the mod into your Mods folder on build. -->
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Generic Mod Config Menu's public API interface, copied locally so we don't need a hard
+         reference to the mod itself. See GMCMIntegration.cs. -->
+  </ItemGroup>
+
+</Project>

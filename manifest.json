@@ -1,0 +1,17 @@
+{
+  "Name": "Sit and Do Stuff",
+  "Author": "BlueCaret",
+  "Version": "1.0.0",
+  "Description": "Get things done while sitting like watch TV or talk to Villagers!",
+  "UniqueID": "BlueCaret.SitAndDoStuff",
+  "EntryDll": "SitAndDoStuff.dll",
+  "MinimumApiVersion": "4.1.0",
+  "MinimumGameVersion": "1.6.15",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}
