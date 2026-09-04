@@ -27,3 +27,7 @@ _ReSharper*/
 
 # Release artifacts
 _releases/   
+
+# AI docs
+docs/
+CLAUDE.md

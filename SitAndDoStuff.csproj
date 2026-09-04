@@ -17,7 +17,7 @@
   <ItemGroup>
     <!-- This package auto-references Stardew Valley.dll, StardewModdingAPI.dll, etc. from your
          local game install, and packages/deploys the mod into your Mods folder on build. -->
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
   </ItemGroup>
 
   <ItemGroup>
