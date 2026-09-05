@@ -8,12 +8,14 @@ using SitAndDoStuff.Targeting;
 namespace SitAndDoStuff
 {
     // Makes nearby villagers/pets emote at the player while sitting - "happy" (32) for villagers,
-    // "heart" (20) for pets. Character.doEmote() self-guards (no-ops mid-emote or during an event),
-    // so this calls it freely with no extra checks.
+    // "heart" (20) for pets, and "heart" (20) for the player's own real spouse specifically (not a
+    // roommate - see the spouse check below). Character.doEmote() self-guards (no-ops mid-emote or
+    // during an event), so this calls it freely with no extra checks.
     public class PassingEmoteManager
     {
         private const int VillagerEmote = 32; // "happy"
         private const int PetEmote = 20;      // "heart"
+        private const int SpouseEmote = 20;   // "heart" - same id as PetEmote, kept separate for clarity
 
         // Cap on how many can emote on the very first check right after sitting down, so sitting
         // near a crowd doesn't make everyone emote in a pile at once.
@@ -81,7 +83,12 @@ namespace SitAndDoStuff
                 else if (!npc.IsMonster && !(npc is Horse))
                 {
                     // Same exclusions as the Talk/Gift NPC category - real villagers only.
-                    emote = VillagerEmote;
+                    // A roommate (e.g. Krobus) IS "married" per Friendship.IsMarried() - IsRoommate()
+                    // is what actually distinguishes a real spouse from that, so a roommate still
+                    // gets the normal villager emote here, not the spouse one.
+                    bool isRealSpouse = player.friendshipData.TryGetValue(npc.Name, out Friendship friendship)
+                        && friendship.IsMarried() && !friendship.IsRoommate();
+                    emote = isRealSpouse ? SpouseEmote : VillagerEmote;
                     settings = config.NPC;
                 }
                 else
