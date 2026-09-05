@@ -269,16 +269,21 @@ namespace SitAndDoStuff.Targeting
                             capturedPet.displayName,
                             who =>
                             {
-                                // Pet.checkAction hard-blocks a second pet per day with no feedback -
-                                // replicate the same emote/sound here without touching
-                                // lastPetDay/grantedFriendshipForPet, so there's zero friendship impact.
+                                // Pet.checkAction hard-blocks a second pet per day with no feedback.
+                                // With AllowRepeatPetting on, replicate the same emote/sound here
+                                // instead - without touching lastPetDay/grantedFriendshipForPet, so
+                                // there's zero friendship impact. Off reverts to vanilla's silent
+                                // no-op for a repeat pet.
                                 bool alreadyPettedToday = capturedPet.lastPetDay.TryGetValue(who.UniqueMultiplayerID, out var lastDay)
                                     && lastDay == Game1.Date.TotalDays;
 
                                 if (alreadyPettedToday)
                                 {
-                                    capturedPet.doEmote(20); // "heart" - same emote a normal pet gives
-                                    capturedPet.playContentSound();
+                                    if (config.AllowRepeatPetting)
+                                    {
+                                        capturedPet.doEmote(20); // "heart" - same emote a normal pet gives
+                                        capturedPet.playContentSound();
+                                    }
                                     return;
                                 }
 

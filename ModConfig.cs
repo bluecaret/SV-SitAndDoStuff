@@ -72,8 +72,12 @@ namespace SitAndDoStuff
         // reverts to vanilla's behavior for repeat clicks.
         public bool AllowRepeatChatDialogue { get; set; } = true;
 
-        // Occasional short "talking to yourself" messages while sitting, using the same speech-
-        // bubble style as NPC greetings. "Never" turns the feature off entirely.
+        // On by default. Once a pet's real daily pet is spent, this shows the same heart emote/sound
+        // again on further pets (no further friendship impact) instead of vanilla's silent no-op.
+        public bool AllowRepeatPetting { get; set; } = true;
+
+        // Occasional short "talking to yourself" messages while sitting, using a small chat-bubble
+        // style. "Never" turns the feature off entirely.
         public FlavorTextFrequency FlavorTextFrequency { get; set; } = FlavorTextFrequency.Occasional;
 
         // Nearby villagers/pets emote at the player while sitting (independent of whether the

@@ -60,6 +60,7 @@ namespace SitAndDoStuff
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
             helper.Events.Input.ButtonsChanged += OnButtonsChanged;
             helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+            helper.Events.Display.RenderingWorld += OnRenderingWorld;
             helper.Events.Display.RenderedWorld += OnRenderedWorld;
             helper.Events.Player.Warped += (_, _) => ClearSession();
 
@@ -138,6 +139,13 @@ namespace SitAndDoStuff
             {
                 // Defensive: sitting in a different location than the session was built for (e.g. a
                 // warp that didn't fire the Warped event).
+                ClearSession();
+            }
+            else if (_session != null && !TargetHighlightsEnabled())
+            {
+                // All three visual indicators were just turned off - with no way to see what's
+                // targeted, cycling is effectively a disabled feature (see OnButtonsChanged); drop
+                // any selection already made before the settings changed.
                 ClearSession();
             }
 
@@ -266,9 +274,11 @@ namespace SitAndDoStuff
 
             GameLocation location = player.currentLocation;
 
-            // ---- Cycling: always available regardless of what's targeted. ----
-            bool cycleLeft = e.Pressed.Any(MatchesMoveLeftButton);
-            bool cycleRight = e.Pressed.Any(MatchesMoveRightButton);
+            // ---- Cycling: available regardless of what's targeted, but only if at least one
+            // ---- visual indicator is on - with all three off, there'd be no way to see what (if
+            // ---- anything) got targeted, so cycling is treated as a disabled feature instead.
+            bool cycleLeft = TargetHighlightsEnabled() && e.Pressed.Any(MatchesMoveLeftButton);
+            bool cycleRight = TargetHighlightsEnabled() && e.Pressed.Any(MatchesMoveRightButton);
             if (cycleLeft || cycleRight)
             {
                 Func<SButton, bool> cycleMatcher = cycleLeft ? MatchesMoveLeftButton : MatchesMoveRightButton;
@@ -344,9 +354,6 @@ namespace SitAndDoStuff
             bool foodSelected = Config.AllowEatingWhileSitting && player.ActiveObject != null && player.ActiveObject.Edibility != -300;
             bool rodSelected = Config.AllowFishingWhileSitting && player.CurrentTool is FishingRod;
 
-            Monitor.Log($"OnButtonsChanged: hasTarget={hasTarget}, foodSelected={foodSelected}, rodSelected={rodSelected}, " +
-                        $"actionPressed={actionPressed}, useToolPressed={useToolPressed}.", LogLevel.Debug);
-
             if (foodSelected && !rodSelected)
             {
                 if (actionPressed)
@@ -412,9 +419,17 @@ namespace SitAndDoStuff
         // PauseForSingleAnimation blocks normal walking animation but not StopSitting's position
         // lerp. Vanilla never hits this since those animations also set CanMove=false; our own
         // handling bypasses that, so check explicitly.
+        //
+        // Also refuses to stand up mid-fishing-charge (UsingTool + isTimingCast): nothing else ever
+        // cancels an in-progress charge, so calling StopSitting() out from under one left the rod
+        // stuck charging forever with the power bar still showing. Same fix shape as the animation
+        // guard above - block the stand-up instead, so the player releases (which fires the cast)
+        // or otherwise resolves it first, exactly like they'd have to while standing anyway.
         private void StandUpUnlessMidAnimation(Farmer player)
         {
             if (player.FarmerSprite.PauseForSingleAnimation)
+                return;
+            if (player.UsingTool && player.CurrentTool is FishingRod rod && rod.isTimingCast)
                 return;
 
             ClearSession();
@@ -453,16 +468,19 @@ namespace SitAndDoStuff
             return MatchesInputButtonList(Game1.options.useToolButton, button);
         }
 
+        // D-pad and the left stick both count as movement - SMAPI synthesizes LeftThumbstickLeft/
+        // Right as regular button presses once the stick crosses its own deadzone, so this needs no
+        // raw analog polling of its own.
         private static bool MatchesMoveLeftButton(SButton button)
         {
-            if (button == SButton.DPadLeft)
+            if (button == SButton.DPadLeft || button == SButton.LeftThumbstickLeft)
                 return true;
             return MatchesInputButtonList(Game1.options.moveLeftButton, button);
         }
 
         private static bool MatchesMoveRightButton(SButton button)
         {
-            if (button == SButton.DPadRight)
+            if (button == SButton.DPadRight || button == SButton.LeftThumbstickRight)
                 return true;
             return MatchesInputButtonList(Game1.options.moveRightButton, button);
         }
@@ -492,6 +510,21 @@ namespace SitAndDoStuff
             }
         }
 
+        // Vanilla's own fishing casting-power/distance bar draws as part of the normal world layer
+        // (charging a cast isn't a Game1.currentMinigame, so flavor text's own minigame check doesn't
+        // exclude it) - drawing our flavor text in the usual RenderedWorld pass, which fires AFTER
+        // the world (and that bar) already drew, paints over it and hides the distance readout.
+        // Drawing this one case earlier instead, before the world layer starts, lets vanilla's own
+        // draw naturally paint over ours - see OnRenderedWorld below for the normal-case draw.
+        private void OnRenderingWorld(object sender, RenderingWorldEventArgs e)
+        {
+            if (!Context.IsWorldReady)
+                return;
+
+            if (IsChargingFishingCast())
+                _flavorText.Draw(e.SpriteBatch, Game1.player);
+        }
+
         private void OnRenderedWorld(object sender, RenderedWorldEventArgs e)
         {
             if (!Context.IsWorldReady)
@@ -500,8 +533,11 @@ namespace SitAndDoStuff
             if (_session != null && _session.HasSelection)
                 TargetRenderer.Draw(e.SpriteBatch, _session.Current, Config);
 
-            _flavorText.Draw(e.SpriteBatch, Game1.player);
+            if (!IsChargingFishingCast())
+                _flavorText.Draw(e.SpriteBatch, Game1.player);
         }
+
+        private static bool IsChargingFishingCast() => Game1.player.CurrentTool is FishingRod rod && rod.isTimingCast;
 
         // Same check vanilla uses to decide whether a click hits UI or the world. Used so mouse-
         // based actions don't fire from clicking the toolbar or other on-screen UI.
@@ -518,6 +554,10 @@ namespace SitAndDoStuff
         }
 
         private void ClearSession() => _session = null;
+
+        // Whether there's any way for the player to actually see what's targeted. Used to disable
+        // cycling entirely when all three are off, rather than let them cycle "blind."
+        private bool TargetHighlightsEnabled() => Config.ShowTargetHighlight || Config.ShowTargetArrow || Config.ShowTargetName;
 
         // Failures are caught and logged rather than crashing; the category is added to
         // _disabledAfterError so a broken TV, say, doesn't also block talking to NPCs.

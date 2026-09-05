@@ -1,15 +1,17 @@
-using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
-using StardewValley.BellsAndWhistles;
+using StardewValley.Menus;
 
 namespace SitAndDoStuff
 {
-    // Shows an occasional "talking to yourself" message above the player while sitting, using the
-    // same visual as NPC greeting bubbles. NPC.showTextAboveHead() only exists on NPC, so this
-    // replicates its draw call (SpriteText.drawStringWithScrollCenteredAt) aimed at the player.
+    // Shows an occasional "talking to yourself" message above the player while sitting. Uses a
+    // small, quiet chat-bubble style (small font, tight box) rather than NPC's own greeting-bubble
+    // style (the big blocky "shouting sign" scroll banner from SpriteText.drawStringWithScrollCenteredAt)
+    // - a private aside should look and feel different from a shout, by design. See
+    // DrawSmallTextBubbleWithAlpha below for why this is a local reimplementation rather than a
+    // direct call to vanilla's own SpriteText.drawSmallTextBubble.
     //
     // Two line pools share this pipeline and MessageChance(): the recurring "flavor-text-N" pool
     // (a chance-roll every RecurringCheckIntervalMs while sitting) and the one-shot "sit-relief-N"
@@ -23,9 +25,21 @@ namespace SitAndDoStuff
         // Must match the number of "sit-relief-N" entries in i18n/default.json.
         private const int SitReliefLineCount = 20;
 
-        private const double FadeInMs = 300;
-        private const double HoldMs = 2500;
-        private const double FadeOutMs = 500;
+        // How long a message stays on screen before disappearing. No fade in/out - it just shows
+        // and then goes away, by preference.
+        private const double DisplayMs = 2500;
+
+        // Horizontal padding, in pixels each side, between the text and the bubble's edge.
+        private const float HorizontalPaddingPx = 16f;
+
+        // How far above the player's feet (StandingPixel) the bubble's bottom sits. Deliberately NOT
+        // NPC's own formula (SpriteHeight*4 + 64 = 192px) - that's tuned for an upright STANDING
+        // pose, which sits much taller than our SITTING player, and it anchors near the bubble's own
+        // TOP (the old scroll style extended mostly downward from it) rather than its bottom (this
+        // bubble extends upward from its anchor - see DrawSmallTextBubble) - both push the old
+        // formula's result well above a seated player's head. Tuned empirically instead - adjust
+        // freely if it still needs to move up or down.
+        private const float BubbleHeightAboveStandingPixel = 108f;
 
         // How long after sitting down the one-shot sit-relief check happens.
         private const double SitReliefDelayMs = 500;
@@ -33,10 +47,6 @@ namespace SitAndDoStuff
         // How often the recurring chance-roll happens. Smaller = finer-grained, smoother pacing;
         // larger = coarser, more "clumped" feeling gaps between messages.
         private const double RecurringCheckIntervalMs = 5000;
-
-        // SpriteText's own default is 3f; this shrinks the bubble to about two-thirds that size.
-        // A plain constant, so feel free to tune it directly if you want it smaller/larger still.
-        private const float BubbleFontPixelZoom = 2f;
 
         private readonly IModHelper _helper;
 
@@ -85,7 +95,7 @@ namespace SitAndDoStuff
             if (_currentText != null)
             {
                 _messageElapsedMs += elapsed;
-                if (_messageElapsedMs >= FadeInMs + HoldMs + FadeOutMs)
+                if (_messageElapsedMs >= DisplayMs)
                 {
                     _currentText = null;
                     _messageElapsedMs = 0;
@@ -124,21 +134,34 @@ namespace SitAndDoStuff
             if (_currentText == null)
                 return;
 
-            float alpha = ComputeAlpha();
-            if (alpha <= 0f)
-                return;
-
-            // Same positioning NPC.drawAboveAlwaysFrontLayer uses: above the character's standing
-            // pixel, offset up by its sprite height (at 4x scale) plus some breathing room.
             Point standingPixel = player.StandingPixel;
-            Vector2 local = Game1.GlobalToLocal(new Vector2(standingPixel.X, standingPixel.Y - player.Sprite.SpriteHeight * 4 - 64));
+            Vector2 bottomCenter = Game1.GlobalToLocal(new Vector2(standingPixel.X, standingPixel.Y - BubbleHeightAboveStandingPixel));
 
-            // fontPixelZoom is a global static field affecting ALL SpriteText-drawn text - shrink it
-            // just for this draw call, then restore it, same as SpriteText.cs does internally.
-            float originalZoom = SpriteText.fontPixelZoom;
-            SpriteText.fontPixelZoom = BubbleFontPixelZoom;
-            SpriteText.drawStringWithScrollCenteredAt(b, _currentText, (int)local.X, (int)local.Y, "", alpha, null, 1, 1f);
-            SpriteText.fontPixelZoom = originalZoom;
+            DrawSmallTextBubble(b, _currentText, bottomCenter);
+        }
+
+        // Based on SpriteText.drawSmallTextBubble (confirmed from decompiled SpriteText.cs), but
+        // reimplemented locally with wider horizontal padding (HorizontalPaddingPx) than vanilla's
+        // own fixed 8px - vanilla's own spacing read as too tight around the text. Same box sprite,
+        // same tail sprite, same font otherwise.
+        private static void DrawSmallTextBubble(SpriteBatch b, string text, Vector2 positionOfBottomCenter)
+        {
+            Vector2 size = Game1.smallFont.MeasureString(text);
+
+            float boxLeft = positionOfBottomCenter.X - size.X / 2f - HorizontalPaddingPx;
+            float boxTop = positionOfBottomCenter.Y - size.Y;
+            float boxWidth = size.X + HorizontalPaddingPx * 2f;
+            float boxHeight = size.Y + 12f;
+
+            IClickableMenu.drawTextureBox(b, Game1.mouseCursors_1_6, new Rectangle(241, 503, 9, 9),
+                (int)boxLeft, (int)boxTop, (int)boxWidth, (int)boxHeight, Color.White, 4f, drawShadow: false, 1f);
+
+            // The little pointer tail, pointing down toward the player (drawPointerOnTop: false case).
+            b.Draw(Game1.mouseCursors_1_6, positionOfBottomCenter + new Vector2(-2.5f, 1f) * 4f,
+                new Rectangle(251, 506, 5, 5), Color.White, 0f, Vector2.Zero, 4f, SpriteEffects.None, 1.00001f);
+
+            Vector2 textPos = new Vector2(positionOfBottomCenter.X - size.X / 2f, boxTop + 8f);
+            Utility.drawTextWithShadow(b, text, Game1.smallFont, textPos, Game1.textColor, 1f, 1.00002f, -1, -1, 0.5f);
         }
 
         private void ShowRandomLine()
@@ -173,15 +196,5 @@ namespace SitAndDoStuff
             };
         }
 
-        private float ComputeAlpha()
-        {
-            if (_messageElapsedMs < FadeInMs)
-                return (float)(_messageElapsedMs / FadeInMs);
-            if (_messageElapsedMs < FadeInMs + HoldMs)
-                return 1f;
-
-            double fadeOutElapsed = _messageElapsedMs - FadeInMs - HoldMs;
-            return (float)Math.Max(0, 1 - fadeOutElapsed / FadeOutMs);
-        }
     }
 }

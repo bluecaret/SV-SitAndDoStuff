@@ -52,17 +52,10 @@ namespace SitAndDoStuff
             api.AddSectionTitle(manifest, () => "Controls");
             api.AddParagraph(manifest, () =>
                 "Interacting, canceling sitting, cycling targets, eating, and fishing all use your own " +
-                "\"Check/Do Action\", \"Use Tool\", and movement keys from the game's own Controls settings - " +
-                "nothing to bind here except Hide HUD below.");
-            api.AddKeybindList(manifest,
-                () => Config().ToggleHudButton, v => Config().ToggleHudButton = v,
-                () => "Hide HUD",
-                () => "While sitting, toggles the game's HUD (toolbar, health/stamina, clock, money) on and " +
-                      "off. Bind a button to enable this option. Automatically restores the HUD when you stand up.");
+                "\"Check/Do Action\", \"Use Tool\", and movement keys from the game's own Controls settings.");
 
-
-            // ---------------- General behavior ----------------
-            api.AddSectionTitle(manifest, () => "General Behavior");
+            // ---------------- Target behavior ----------------
+            api.AddSectionTitle(manifest, () => "Targeting objects for interaction");
             api.AddBoolOption(manifest,
                 () => Config().RequireFacingTarget, v => Config().RequireFacingTarget = v,
                 () => "Require facing target",
@@ -84,6 +77,9 @@ namespace SitAndDoStuff
                 () => Config().HighlightColor, v => Config().HighlightColor = v,
                 () => "Target highlight color (hex)",
                 () => "Use a HEX color code, e.g. #FFDE59");
+
+            // ---------------- Additional features ----------------
+            api.AddSectionTitle(manifest, () => "Additional features");
             api.AddTextOption(manifest,
                 () => Config().FlavorTextFrequency.ToString(),
                 v => Config().FlavorTextFrequency = Enum.TryParse(v, out FlavorTextFrequency f) ? f : FlavorTextFrequency.Occasional,
@@ -97,6 +93,24 @@ namespace SitAndDoStuff
                 () => "Nearby villagers/pets emote at you while sitting (once per character per sitting " +
                       "session). The range set for Villagers and Pets affect the NPCs who will greet you. Does not " +
                       "affect friendship.");
+            api.AddKeybindList(manifest,
+                () => Config().ToggleHudButton, v => Config().ToggleHudButton = v,
+                () => "Hide HUD",
+                () => "While sitting, toggles the game's HUD (toolbar, health/stamina, clock, money) on and " +
+                      "off. Bind a button to enable this option. Automatically restores the HUD when you stand up.");
+            
+            // ---------------- Experimental: eating and fishing ----------------
+            api.AddSectionTitle(manifest, () => "Eat/Fish (experimental)");
+            api.AddBoolOption(manifest,
+                () => Config().AllowEatingWhileSitting, v => Config().AllowEatingWhileSitting = v,
+                () => "Allow Eating While Sitting.",
+                () => "With nothing targeted: press \"Check/Do Action\" to eat. " + 
+                        "Animations may be glitchy. This is an experimental feature.");
+            api.AddBoolOption(manifest,
+                () => Config().AllowFishingWhileSitting, v => Config().AllowFishingWhileSitting = v,
+                () => "Allow Fishing While Sitting",
+                () => "With nothing targeted: press and hold \"Use Tool\" to charge a fishing cast (release to cast)" + 
+                        "Animations may be glitchy. This is an experimental feature.");
 
             // ---------------- NPC settings ----------------
             api.AddSectionTitle(manifest, () => "Talk/Gift Villagers");
@@ -115,26 +129,13 @@ namespace SitAndDoStuff
                 () => "Chatty Villagers",
                 () => "Allows talking to villagers additional times (if villager has more chats available based " +
                       "on context, and with no extra friendship gain). Once conversation has been exhausted (usually " +
-                      "max of 3 additional chats) they will response with '...'. Repeats each time you sit.");
+                      "max of 3 additional chats) they will respond with '...'. Repeats each time you sit.");
             api.AddBoolOption(manifest,
                 () => Config().AllowGiftingWhileSitting, v => Config().AllowGiftingWhileSitting = v,
                 () => "Give gifts",
                 () => "Requires 'Talk with Villagers'. Off by default: interacting always talks, and prompts you to " +
                       "unequip if you're holding something giftable. On: the label switches to 'Give a gift to " +
                       "[Name]' when applicable; unequip beforehand if you'd rather just talk.");
-            
-            // ---------------- Experimental: eating and fishing ----------------
-            api.AddSectionTitle(manifest, () => "Eat/Fish (experimental)");
-            api.AddParagraph(manifest, () =>
-                "With nothing targeted: press \"Check/Do Action\" to eat, or press and hold \"Use Tool\" to " +
-                "charge a fishing cast (release to cast) - the exact same buttons you'd use while standing.");
-            api.AddBoolOption(manifest,
-                () => Config().AllowEatingWhileSitting, v => Config().AllowEatingWhileSitting = v,
-                () => "Allow Eating While Sitting");
-            api.AddBoolOption(manifest,
-                () => Config().AllowFishingWhileSitting, v => Config().AllowFishingWhileSitting = v,
-                () => "Allow Fishing While Sitting",
-                () => "Uses a charge-and-release cast, just like vanilla.");
 
             // ---------------- Saloon Bar settings ----------------
             api.AddSectionTitle(manifest, () => "Order food at the Saloon");
@@ -161,6 +162,10 @@ namespace SitAndDoStuff
                 () => rangeLabel,
                 () => rangeTooltip + Config().Pet.MaxRange,
                 min: 1, max: Config().Pet.MaxRange, interval: 1);
+            api.AddBoolOption(manifest,
+                () => Config().AllowRepeatPetting, v => Config().AllowRepeatPetting = v,
+                () => "Repeat Petting",
+                () => "Allows petting a pet again after its daily pet is already used up. Does not affect friendship.");
 
             // ---------------- Farm Animals settings ----------------
             api.AddSectionTitle(manifest, () => "Farm Animals");

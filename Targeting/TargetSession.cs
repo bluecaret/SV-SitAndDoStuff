@@ -19,6 +19,7 @@ namespace SitAndDoStuff.Targeting
 
         private readonly float[] _angles; // AngleFromPlayer for each target, same order as Targets
         private readonly int _facingIndex; // index of the target closest to facing ("F")
+        private readonly int _facingDirection; // 0=up, 1=right, 2=down, 3=left - see CycleRightSign
 
         // 0..Targets.Count-1 = a real target, counted forward from F in _loopDirection.
         // Targets.Count = "None".
@@ -43,19 +44,20 @@ namespace SitAndDoStuff.Targeting
 
             float facingAngle = AngleFromPlayer(playerTile + TargetFinder.DirectionToVector(facingDirection), playerTile);
             _facingIndex = ClosestIndexToAngle(facingAngle, playerTile);
+            _facingDirection = facingDirection;
 
             _stepsFromF = Targets.Count; // start at "None"
         }
 
-        public void MoveLeft() => Move(clockwise: false);
-        public void MoveRight() => Move(clockwise: true);
+        public void MoveLeft() => Move(cycleRight: false);
+        public void MoveRight() => Move(cycleRight: true);
 
-        private void Move(bool clockwise)
+        private void Move(bool cycleRight)
         {
             if (Targets.Count == 0)
                 return; // HasSelection stays false regardless; nothing to cycle to
 
-            int pressDir = clockwise ? 1 : -1;
+            int pressDir = (cycleRight ? 1 : -1) * CycleRightSign(_facingDirection);
 
             if (_stepsFromF == Targets.Count)
             {
@@ -114,6 +116,15 @@ namespace SitAndDoStuff.Targeting
             }
             return bestIndex;
         }
+
+        // "Cycle right" should always feel like continuing the same rotational sense the player is
+        // facing, not always sweeping toward absolute world-clockwise. Concretely (confirmed against
+        // the actual target requirement, not just theory): facing up, right, or left, "cycle right"
+        // continues in the array's default +1 (world-clockwise) direction and reaches east, south,
+        // or north (respectively) first - matching +1 already. Facing down is the one case where the
+        // array's +1 direction reaches west first instead of the wanted east, because down (180°) is
+        // the antipode of the array's 0°/360° wrap point - so only that facing needs the sign flipped.
+        private static int CycleRightSign(int facingDirection) => facingDirection == 2 ? -1 : 1;
 
         // Angle from "up" (0,-1), increasing clockwise. atan2(dx, -dy) rather than the usual
         // atan2(dy, dx) because Stardew's Y axis points down, and we want 0 at "up" specifically.
