@@ -4,6 +4,7 @@
 *.userosscache
 *.sln.docstates
 *.userprefs
+.DS_Store
 
 # build results
 [Dd]ebug/
@@ -31,3 +32,4 @@ _releases/
 # AI docs
 ai/
 CLAUDE.md
+vendor/*
