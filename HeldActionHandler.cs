@@ -10,11 +10,13 @@ namespace SitAndDoStuff
     // toolbar (Farmer.ActiveObject / Farmer.CurrentTool). Triggered by ModEntry mapping the
     // player's own vanilla Action/Use Tool buttons onto these - see ModEntry.OnButtonsChanged.
     //
-    // Needed because vanilla's Game1.pressUseToolButton redirects straight into standing up while
-    // sitting, before it ever reaches eating or fishing. These methods re-create just enough of
-    // vanilla's own logic to get past that block; everything after (hooking a bite, the catching
-    // minigame) runs through vanilla untouched, since that redirect only applies while UsingTool
-    // is still false.
+    // Fishing needs this to get past a real, confirmed sitting redirect inside vanilla's
+    // pressUseToolButton (see ai/vanilla-api-reference.md) - only the first charge-start press;
+    // everything after (hooking a bite, the catching minigame) runs through vanilla untouched once
+    // UsingTool is true. Eating has no such redirect in vanilla - its dispatch (inside
+    // pressActionButton) never checks IsSitting() at all. TryEat exists instead because this mod
+    // always takes over the Action button itself while sitting, so its own targeting decides
+    // interact-vs-eat-vs-stand-up rather than letting vanilla's pressActionButton run for that press.
     public static class HeldActionHandler
     {
         // Attempts to eat/drink the player's currently selected item. Returns true if the prompt

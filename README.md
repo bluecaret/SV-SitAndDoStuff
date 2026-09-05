@@ -10,17 +10,25 @@ Configurable via **Generic Mod Config Menu (GMCM)** (optional, but strongly reco
 ## How it works in-game
 
 1. Sit down as normal. Nothing is targeted initially.
-2. Cycle through targetable objects with `A`/`D` (controller: left/right on `D-Pad`).
+2. Cycle through targetable objects with the move left/right buttons.
    1. Cycling goes left to right relative to the way you're facing, wrapping back around to
       nothing targeted: `None -> Target 1 -> ... -> Target N -> None`.
-   2. The highlight can be a yellow square around the object's tile, a small animated arrow above
-      it, or both, plus the object's name.
-3. **If targeting an object:** the interact button (`X`/`right-click`) (controller: `A`) interacts with it.
-4. **If not targeting anything:** the interact button will stand you up as normal.
-5. `C`/`left-click` (controller: `B`) always stands you up immediately, canceling any targeting.
+   2. The highlight can be any combination of: a yellow square around the object's tile footprint, a small animated arrow above
+      it, and the object's name above it.
+3. Once targeting an object, use the action button like normal to interact.
+4. To stand up while targeting, use the tool button.
+5. With nothing targeted, either button just stands you up - unless you have food/a drink or a
+   fishing rod selected and the matching experimental setting enabled, in which case the action
+   button eats/drinks it, or the tool button charges/releases a fishing cast.
 
-### Available actions
+### Available actions while sitting
 
+- Talk to NPCs
+- Gift NPCs (off by default)
+- Order at the Saloon bar
+- Pet pets/farm animals
+- Fishing (experimental - see below, off by default)
+- Eat food (experimental - see below, off by default)
 - Use furniture items (placed furniture, not the same as fixed map furniture in some buildings):
   - TV
   - Telephone
@@ -29,10 +37,28 @@ Configurable via **Generic Mod Config Menu (GMCM)** (optional, but strongly reco
   - Arcade Systems
   - Sewing Machine
   - Mini-Jukebox
-- Talk to NPCs
-- Gift NPCs (off by default - see settings)
-- Pet pets/farm animals
-- Order at the Saloon bar
+
+#### More features!
+
+- Hide the HUD while sitting - Optional, automatically displays HUD again after standing.
+- Chatty villagers - Allows you to talk to villagers more than once while sitting (usually 1-3 more times).
+- Mumble to yourself - Your farmer will occasionally talk to himself as he sits, and every now and then while sitting.
+- Villager greetings - Nearby villagers and pets will emote at you as they pass or if you sit within range of them.
+
+### Eating and fishing while sitting (experimental)
+
+Unlike everything else on this list, these two don't use targeting at all - they just work off
+whatever food/drink or fishing rod you already have selected in your toolbar, using your normal
+action/use tool buttons exactly like standing:
+
+- **Eating While Sitting:** with food or a drink selected and nothing targeted, the action button eats or drinks it. Food must be held above your head to eat (which is not visible while sitting), so either hold it and then sit, or change items in the toolbar and then switch back to the food.
+- **Fishing While Sitting:** with a fishing rod equipped and nothing targeted, hold tool button to charge a cast and release to cast - hooking a bite and the whole catching
+  minigame work exactly like they do while standing.
+
+Both are off by default and marked experimental - they needed a lot of extra work to get right, so
+enable them in settings if you want to try them, and please report anything weird you run into.
+
+Note: the animations of eating and fishing will look glitchy as these were never intended to be used while sitting. I find them close enough personally to not warrant the extra work to replace them so they will be left as-is.
 
 ### Additional info
 
@@ -40,33 +66,11 @@ Only objects you're facing (directly ahead, diagonally ahead, or straight to eit
 targeted, except the Saloon bar, which works from any direction. Turn this off with "Require
 Facing Target" in settings to allow targeting in any direction.
 
-Each type of action can be individually configured. The options for each type are:
+When gifting is disabled, if you try talking with an NPC with a giftable item selected, you will be told to store the gift before you can talk. If enabled, an item has to be held in order to gift it to the NPC and the text above the player will read "Give a gift to [name]".
 
-- **Enabled:** turns targeting/interacting with that category on or off.
-- **Range:** how far away it can be, from 1 tile (only the 8 tiles touching you) up to 10.
-
-I tried allowing Fishing and Eating while sitting but these proved to be very complicated and bug prone; and so I was 
-unable to get it to work. I do not believe it is possible due to how the game code works.
+Most of the features of this mod can be customized. It is highly recommended to use Generic Mod Config Menu (GMCM) with this mod. Without GMCM installed, settings can be hand-edited in `config.json` after the mod runs once.
 
 Without GMCM installed, settings can be hand-edited in `config.json` after the mod runs once.
-
-## Project layout
-
-```
-SitAndDoStuff/
-  manifest.json              SMAPI mod manifest
-  SitAndDoStuff.csproj        Project file (uses Pathoschild.Stardew.ModBuildConfig)
-  ModEntry.cs                 Mod entry point: input handling, session lifecycle
-  ModConfig.cs                Config schema (keybinds + per-category enable/range)
-  GMCMIntegration.cs          Generic Mod Config Menu hookup (local API interface + menu builder)
-  Targeting/
-    InteractionCategory.cs    Enum of everything the mod can target
-    InteractionTarget.cs      A single candidate: where it is, its label, how to trigger it
-    TargetFinder.cs           Scans the current location for valid, in-range, facing targets
-    TargetSession.cs          Tracks the active target list + current selection while cycling
-    TargetRenderer.cs         Draws the highlight
-  i18n/default.json           Translation stub
-```
 
 ## How to build it
 
