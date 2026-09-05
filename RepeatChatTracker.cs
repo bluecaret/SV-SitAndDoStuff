@@ -4,9 +4,8 @@ using StardewValley;
 namespace SitAndDoStuff
 {
     // Tracks, per NPC, how many of the three repeat-chat "families" (see TargetFinder's NPC
-    // section) have already been tried this sitting session. Deliberately in-memory only and
-    // reset on standing up, rather than tracked per-day - standing up and sitting back down lets
-    // the same short chain repeat, which is an accepted, simple trade-off rather than a bug.
+    // section) have been tried this sitting session. In-memory only, reset on standing up - standing
+    // and sitting back down lets the same chain repeat, an accepted trade-off.
     public class RepeatChatTracker
     {
         private const int FamilyCount = 3;

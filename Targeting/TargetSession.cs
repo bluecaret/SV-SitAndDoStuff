@@ -5,18 +5,13 @@ using StardewValley;
 
 namespace SitAndDoStuff.Targeting
 {
-    // Tracks cycling state for one continuous sitting stretch. Created once when the player first
-    // cycles after sitting down (via TargetFinder.FindTargets); the target list itself is NOT
-    // re-scanned on every cycle press, only when a new session starts, so ordering stays stable
-    // while cycling even if something nearby moves.
+    // Tracks cycling state for one continuous sitting stretch. Created once per session (via
+    // TargetFinder.FindTargets) so ordering stays stable while cycling even if something moves.
     //
-    // The very first press after "None" always lands on whichever target is closest to the
-    // player's facing direction ("F"), and locks in whichever direction (clockwise/counter-
-    // clockwise) was just pressed as "forward" for this lap. From there, pressing forward walks
-    // through every other target in turn; pressing backward retraces toward F and back to None.
-    // A full forward lap visits every target exactly once before returning to None - and None
-    // always ends up sitting on the backward side of F for whichever direction started the lap,
-    // so either button alone can reach the entire ring over one full cycle.
+    // The first press after "None" lands on the target closest to the player's facing direction
+    // ("F") and locks that press's direction as "forward" for the lap. Forward then walks through
+    // every other target in turn; backward retraces toward F and back to "None" - so either button
+    // alone can reach the entire ring over one full lap.
     public class TargetSession
     {
         public List<InteractionTarget> Targets { get; }

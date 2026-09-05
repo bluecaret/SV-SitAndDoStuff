@@ -28,9 +28,8 @@ namespace SitAndDoStuff.Targeting
             if (config.ShowTargetHighlight)
                 DrawSquareOutline(b, screenPos, footprintPixelWidth, footprintPixelHeight, color);
 
-            // The arrow and label, on the other hand, align to the top of the actual SPRITE, which
-            // for things like NPCs and tall Furniture (TVs) extends above the footprint - screenPos.Y
-            // minus that extra height is the sprite's real top edge.
+            // The arrow and label align to the sprite's real top instead, which for NPCs/tall
+            // Furniture extends above the footprint.
             float centerX = screenPos.X + footprintPixelWidth / 2f;
             float spriteTopY = screenPos.Y - target.ExtraHeightAboveFootprintPixels;
 

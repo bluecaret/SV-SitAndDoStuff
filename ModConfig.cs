@@ -42,10 +42,9 @@ namespace SitAndDoStuff
         // ----------------------------------------------------------------
         // Controls
         // ----------------------------------------------------------------
-        // Interacting, canceling sitting, cycling targets, eating, and fishing all use the
-        // player's OWN vanilla "Check/Do Action", "Use Tool", and movement keys (from the game's
-        // own Controls settings) instead of dedicated keybinds - see ModEntry.OnButtonsChanged for
-        // the full mapping. Toggle HUD is the only action with a keybind of its own here.
+        // Interacting, canceling sitting, cycling, eating, and fishing all reuse the player's own
+        // vanilla Action/Use Tool/movement keys instead of dedicated keybinds - see
+        // ModEntry.OnButtonsChanged. Toggle HUD is the only action with its own keybind.
 
         // No default binding - purely opt-in. Only does anything while sitting; otherwise the press
         // is left untouched (e.g. a key that normally opens the map will still open the map while
@@ -68,10 +67,9 @@ namespace SitAndDoStuff
         // highlighted NPC without checking what's in hand.
         public bool AllowGiftingWhileSitting { get; set; } = false;
 
-        // On by default. Once an NPC's real conversation friendship is already spent for the day,
-        // this lets talking again pull a couple more genuine lines from their own dialogue data
-        // (with zero further friendship impact) before falling back to "...". Off reverts to
-        // vanilla's own behavior for repeat clicks.
+        // On by default. Once an NPC's daily conversation friendship is spent, this pulls a couple
+        // more genuine lines (no further friendship impact) before falling back to "...". Off
+        // reverts to vanilla's behavior for repeat clicks.
         public bool AllowRepeatChatDialogue { get; set; } = true;
 
         // Occasional short "talking to yourself" messages while sitting, using the same speech-
@@ -86,12 +84,9 @@ namespace SitAndDoStuff
         // ----------------------------------------------------------------
         // Experimental: eating and fishing while sitting
         // ----------------------------------------------------------------
-        // These work completely differently from every other feature in this mod. Everything else
-        // is about picking a nearby OBJECT to interact with. Eating and fishing are instead about
-        // using whatever ITEM or TOOL the player already has selected in their toolbar - there's
-        // nothing external to "target", which is why they're triggered by the vanilla Action/Use
-        // Tool buttons (see ModEntry.OnButtonsChanged) instead of the cycle-and-select system. See
-        // HeldActionHandler.cs for how they work.
+        // Unlike every other feature, these act on whatever ITEM or TOOL is already selected in the
+        // toolbar rather than a targeted nearby object - triggered via the vanilla Action/Use Tool
+        // buttons instead of the cycle-and-select system. See HeldActionHandler.cs.
 
         // Off by default. Press "Check/Do Action" (with nothing targeted) to eat/drink your
         // selected item.

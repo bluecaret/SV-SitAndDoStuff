@@ -21,11 +21,9 @@ namespace SitAndDoStuff.Targeting
         public int FootprintWidth { get; }
         public int FootprintHeight { get; }
 
-        // How far the actual VISUAL sprite extends above the footprint's top edge, in pixels. Many
-        // sprites (NPCs, tall Furniture like TVs) are drawn taller than their tile footprint - this
-        // lets the arrow/label align to the real top of the sprite instead of the footprint, which
-        // would otherwise cut through the middle of a standing NPC. 0 for anything that renders
-        // flush with its footprint already (plain bigcraftables, the Saloon bar).
+        // How far the visual sprite extends above the footprint's top edge, in pixels - lets the
+        // arrow/label align to a tall sprite's real top (NPCs, TVs) instead of cutting through it.
+        // 0 for anything that renders flush with its footprint.
         public float ExtraHeightAboveFootprintPixels { get; }
 
         public string DisplayName { get; }

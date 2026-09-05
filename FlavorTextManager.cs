@@ -7,16 +7,13 @@ using StardewValley.BellsAndWhistles;
 
 namespace SitAndDoStuff
 {
-    // Shows an occasional short "talking to yourself" message above the player while sitting,
-    // using the same visual as NPC greeting bubbles ("Hi, Green Slime!"). That's driven by
-    // NPC.showTextAboveHead(), which only exists on NPC - not Farmer - so this replicates the same
-    // underlying draw call (SpriteText.drawStringWithScrollCenteredAt) aimed at the player instead,
-    // with our own timer/fade state standing in for the fields NPC manages internally.
+    // Shows an occasional "talking to yourself" message above the player while sitting, using the
+    // same visual as NPC greeting bubbles. NPC.showTextAboveHead() only exists on NPC, so this
+    // replicates its draw call (SpriteText.drawStringWithScrollCenteredAt) aimed at the player.
     //
-    // Two line pools share this same display pipeline and the same MessageChance() percentages:
-    // the recurring "flavor-text-N" pool (a repeated chance-roll every RecurringCheckIntervalMs
-    // while sitting) and the one-shot "sit-relief-N" pool (a single chance roll ~0.5s after sitting
-    // down). "Never" disables both.
+    // Two line pools share this pipeline and MessageChance(): the recurring "flavor-text-N" pool
+    // (a chance-roll every RecurringCheckIntervalMs while sitting) and the one-shot "sit-relief-N"
+    // pool (a single roll ~0.5s after sitting down). "Never" disables both.
     public class FlavorTextManager
     {
         // IMPORTANT: update this to match however many "flavor-text-N" entries you actually have in
@@ -99,10 +96,9 @@ namespace SitAndDoStuff
             if (config.FlavorTextFrequency == FlavorTextFrequency.Never)
                 return;
 
-            // Recurring check: every RecurringCheckIntervalMs, roll the same per-tier chance used
-            // for the sit-relief line. A repeated coin-flip naturally produces the "sometimes
-            // clusters, sometimes long gaps" feel, rather than a fixed randomized wait window that
-            // never lets a tier surprise you outside its own band.
+            // Every RecurringCheckIntervalMs, roll the same per-tier chance as the sit-relief line -
+            // a repeated coin-flip gives a more natural "sometimes clusters, sometimes gaps" feel
+            // than a fixed randomized wait window.
             _recurringCheckTimerMs += elapsed;
             if (_recurringCheckTimerMs >= RecurringCheckIntervalMs)
             {
@@ -112,9 +108,8 @@ namespace SitAndDoStuff
             }
         }
 
-        // Called whenever sitting stops (or was never eligible to begin with) - clears all pending
-        // timers so a queued-up message from a previous sit doesn't immediately fire on the next
-        // one, and re-arms the one-shot sit-relief check for the next time the player sits down.
+        // Clears pending timers so a queued message doesn't fire on the next sit, and re-arms the
+        // one-shot sit-relief check.
         public void Reset()
         {
             _recurringCheckTimerMs = 0;
@@ -138,11 +133,8 @@ namespace SitAndDoStuff
             Point standingPixel = player.StandingPixel;
             Vector2 local = Game1.GlobalToLocal(new Vector2(standingPixel.X, standingPixel.Y - player.Sprite.SpriteHeight * 4 - 64));
 
-            // fontPixelZoom is a global static field (default 3f) that controls the size of ALL
-            // SpriteText-drawn text, not just ours - temporarily shrinking it just for this one draw
-            // call, then restoring it right after, is the same technique SpriteText.cs itself uses
-            // internally whenever it needs a different size, so this doesn't affect anything else
-            // that draws text later in the same frame (dialogue, the clock, etc.).
+            // fontPixelZoom is a global static field affecting ALL SpriteText-drawn text - shrink it
+            // just for this draw call, then restore it, same as SpriteText.cs does internally.
             float originalZoom = SpriteText.fontPixelZoom;
             SpriteText.fontPixelZoom = BubbleFontPixelZoom;
             SpriteText.drawStringWithScrollCenteredAt(b, _currentText, (int)local.X, (int)local.Y, "", alpha, null, 1, 1f);

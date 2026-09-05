@@ -8,9 +8,8 @@ using SitAndDoStuff.Targeting;
 namespace SitAndDoStuff
 {
     // Makes nearby villagers/pets emote at the player while sitting - "happy" (32) for villagers,
-    // "heart" (20) for pets. Character.doEmote() is confirmed public (GameLocation.cs calls it
-    // externally on NPC instances) and self-guarding internally (does nothing if the target is
-    // already emoting or an event is running), so this can call it freely with no extra checks.
+    // "heart" (20) for pets. Character.doEmote() self-guards (no-ops mid-emote or during an event),
+    // so this calls it freely with no extra checks.
     public class PassingEmoteManager
     {
         private const int VillagerEmote = 32; // "happy"
@@ -90,10 +89,8 @@ namespace SitAndDoStuff
 
             if (_isFirstCheck)
             {
-                // Only the closest couple get to greet immediately. Everyone else simply isn't
-                // marked as greeted yet - they're not excluded forever, they just didn't get their
-                // moment this instant. If one of them later leaves and re-enters range, that's a
-                // normal "entered range" event and they'll emote then, same as anyone else.
+                // Only the closest couple greet immediately; the rest aren't marked greeted, so
+                // they'll still emote normally if they leave and re-enter range later.
                 var closest = newlyInRange
                     .OrderBy(c => Vector2.DistanceSquared(playerTile, c.character.Tile))
                     .Take(MaxImmediateGreeters);

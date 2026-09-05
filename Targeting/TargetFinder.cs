@@ -70,9 +70,8 @@ namespace SitAndDoStuff.Targeting
                     int tilesWide = 1, tilesHigh = 1;
                     float extraHeightAboveFootprint;
 
-                    // These four are hardcoded to a tuned height regardless of their underlying C#
-                    // type - unlike TV/ArcadeMachine/MiniJukebox, which use the real calculated
-                    // sprite height below whenever they're Furniture-typed.
+                    // These four use a tuned fixed height instead of the calculated sprite height
+                    // below (unlike TV/ArcadeMachine/MiniJukebox).
                     bool useFixedHeight = category.Value == InteractionCategory.Telephone
                         || category.Value == InteractionCategory.FarmComputer
                         || category.Value == InteractionCategory.SewingMachine
@@ -89,10 +88,8 @@ namespace SitAndDoStuff.Targeting
                         }
                         else
                         {
-                            // Same formula Furniture.cs itself uses to compute drawPosition - how far
-                            // the actual sprite extends above the footprint. sourceRect.Height is the
-                            // sprite's raw source-sheet height; 4f matches the fixed scale
-                            // Furniture.draw() uses.
+                            // Same formula Furniture.cs uses for drawPosition (source-sheet height *
+                            // Furniture.draw()'s fixed 4x scale).
                             float spriteHeightPixels = furn.sourceRect.Value.Height * 4f;
                             float footprintHeightPixels = tilesHigh * Game1.tileSize;
                             extraHeightAboveFootprint = Math.Max(0f, spriteHeightPixels - footprintHeightPixels);
@@ -166,9 +163,7 @@ namespace SitAndDoStuff.Targeting
                             ? $"Give a gift to {capturedNpc.displayName}"
                             : $"Talk to {capturedNpc.displayName}";
 
-                        // Standing NPC sprites are almost always taller than their single-tile
-                        // footprint (confirmed from NPC.cs's own greeting-bubble positioning, which
-                        // uses this same Sprite.SpriteHeight * 4 formula).
+                        // Same Sprite.SpriteHeight * 4 formula NPC.cs uses for its own greeting bubble.
                         float extraHeightAboveFootprint = Math.Max(0f, capturedNpc.Sprite.SpriteHeight * 4f - Game1.tileSize);
 
                         results.Add(new InteractionTarget(
@@ -187,16 +182,13 @@ namespace SitAndDoStuff.Targeting
                                     return;
                                 }
 
-                                // Confirmed from NPC.grantConversationFriendship: vanilla itself
-                                // refuses to grant a second round of conversation friendship the
-                                // same day, gated on this exact check. Once that's already true (and
-                                // the setting's on), work through up to three "families" of the
-                                // NPC's own real dialogue - one per repeat click, tracked in memory
-                                // for this sitting session only (RepeatChatTracker) - before
-                                // settling on "...". Deliberately only ever picks ONE heart-level-
-                                // appropriate line per family, never multiple tiers within a family,
-                                // since e.g. Jas's low-heart "I don't know you" line would make no
-                                // sense showing after her higher-heart lines in the same sitting.
+                                // hasPlayerTalkedToNPC mirrors vanilla's own daily conversation-
+                                // friendship gate. Once true (and the setting's on), work through up
+                                // to three "families" of the NPC's real dialogue - one per repeat
+                                // click, tracked per sitting session (RepeatChatTracker) - before
+                                // falling back to "...". Only one heart-level-appropriate line per
+                                // family, since a lower-heart line showing after a higher-heart one
+                                // in the same sitting would read oddly.
                                 if (config.AllowRepeatChatDialogue && who.hasPlayerTalkedToNPC(capturedNpc.Name))
                                 {
                                     who.friendshipData.TryGetValue(capturedNpc.Name, out var friendship);
@@ -206,19 +198,15 @@ namespace SitAndDoStuff.Targeting
 
                                     if (familyIndex == 0)
                                     {
-                                        // Same method (and same two-attempt, with/without seasonal
-                                        // prefix, pattern) checkAction itself uses. Never touches
-                                        // friendship on its own.
+                                        // Same method (and seasonal-prefix retry) checkAction itself
+                                        // uses - doesn't touch friendship on its own.
                                         foundDialogue = capturedNpc.checkForNewCurrentDialogue(heartLevel)
                                             || capturedNpc.checkForNewCurrentDialogue(heartLevel, noPreface: true);
                                     }
                                     else if (familyIndex == 1)
                                     {
-                                        // Bare day-name keys, optionally with a heart-level threshold
-                                        // or season prefix (e.g. "Mon", "Mon8", "summer_Mon") - a
-                                        // separate, well-established generic-smalltalk convention
-                                        // checkForNewCurrentDialogue never checks on its own, since
-                                        // it only ever tries day-names combined with a location.
+                                        // Bare day-name keys (e.g. "Mon", "Mon8", "summer_Mon") -
+                                        // checkForNewCurrentDialogue never tries these on its own.
                                         Dialogue dayLine = TryGetGenericDayDialogue(capturedNpc, heartLevel, includeSeasonPrefix: true)
                                             ?? TryGetGenericDayDialogue(capturedNpc, heartLevel, includeSeasonPrefix: false);
                                         if (dayLine != null)
@@ -281,12 +269,9 @@ namespace SitAndDoStuff.Targeting
                             capturedPet.displayName,
                             who =>
                             {
-                                // Confirmed from Pet.checkAction: it checks this exact field/value
-                                // itself, and simply returns false (no emote, no sound, nothing) if
-                                // already petted today - it's a hard daily limit, unlike NPCs where
-                                // something might still show. Replicate the same feedback ourselves
-                                // without touching lastPetDay/grantedFriendshipForPet at all, so
-                                // there's zero friendship impact.
+                                // Pet.checkAction hard-blocks a second pet per day with no feedback -
+                                // replicate the same emote/sound here without touching
+                                // lastPetDay/grantedFriendshipForPet, so there's zero friendship impact.
                                 bool alreadyPettedToday = capturedPet.lastPetDay.TryGetValue(who.UniqueMultiplayerID, out var lastDay)
                                     && lastDay == Game1.Date.TotalDays;
 
@@ -462,9 +447,8 @@ namespace SitAndDoStuff.Targeting
             return new Vector2(nearestX, nearestY);
         }
 
-        // Chebyshev distance (diagonal counts the same as straight) so a range of 1 covers exactly
-        // the 8 tiles touching the player, matching the range description in the settings menu.
-        // Public so PassingEmoteManager can reuse the exact same range logic instead of duplicating it.
+        // Chebyshev distance, so a range of 1 covers exactly the 8 tiles touching the player.
+        // Public so PassingEmoteManager can reuse it.
         public static bool IsInRange(Vector2 from, Vector2 to, int range, int maxRange)
         {
             int dx = Math.Abs((int)from.X - (int)to.X);
