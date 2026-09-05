@@ -85,7 +85,8 @@ namespace SitAndDoStuff
                 v => Config().FlavorTextFrequency = Enum.TryParse(v, out FlavorTextFrequency f) ? f : FlavorTextFrequency.Occasional,
                 () => "Mumble while sitting",
                 () => "Allow the farmer to talk to themself while sitting. Choose how often to show these " +
-                      "messages. 'Never' turns this off.",
+                      "messages. 'Never' turns this off. If it is a villager's birthday, the first time you sit for the " +
+                      "day the farmer will mention it.",
                 allowedValues: new[] { "Never", "Often", "Occasional", "Infrequent" });
             api.AddBoolOption(manifest,
                 () => Config().AllowPassingEmotes, v => Config().AllowPassingEmotes = v,

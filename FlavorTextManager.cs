@@ -15,7 +15,9 @@ namespace SitAndDoStuff
     //
     // Two line pools share this pipeline and MessageChance(): the recurring "flavor-text-N" pool
     // (a chance-roll every RecurringCheckIntervalMs while sitting) and the one-shot "sit-relief-N"
-    // pool (a single roll ~0.5s after sitting down). "Never" disables both.
+    // pool (a single roll ~0.5s after sitting down). "Never" disables both. On the first sit of a new
+    // in-game day, a single "birthday-flavor-text" line takes the sit-relief slot instead (no chance
+    // roll) if it happens to be a villager's birthday - see TryConsumeFirstSitBirthdayCheck.
     public class FlavorTextManager
     {
         // IMPORTANT: update this to match however many "flavor-text-N" entries you actually have in
@@ -56,6 +58,12 @@ namespace SitAndDoStuff
         private double _sitReliefTimerMs;
         private bool _hasCheckedSitRelief;
 
+        // The in-game day (Game1.Date.TotalDays) the birthday check last ran, so it only ever fires
+        // on the first sit of a given day - unlike _hasCheckedSitRelief, this deliberately does NOT
+        // reset in Reset() (i.e. on standing up), so a second sit later the same day doesn't check
+        // again. -1 so the very first sit of a fresh session always checks.
+        private int _lastBirthdayCheckDay = -1;
+
         private string _currentText;
         private double _messageElapsedMs;
 
@@ -77,7 +85,9 @@ namespace SitAndDoStuff
             double elapsed = Game1.currentGameTime?.ElapsedGameTime.TotalMilliseconds ?? 0;
 
             // One-shot sit-relief check, ~0.5s after becoming eligible (i.e. after sitting down).
-            // Only ever runs once per sit, regardless of whether it actually shows anything.
+            // Only ever runs once per sit, regardless of whether it actually shows anything. On the
+            // very first sit of a new in-game day specifically, a birthday reminder (if it's anyone's
+            // birthday today) takes priority over the normal chance-rolled sit-relief line.
             if (!_hasCheckedSitRelief)
             {
                 _sitReliefTimerMs += elapsed;
@@ -86,7 +96,10 @@ namespace SitAndDoStuff
                     _hasCheckedSitRelief = true;
                     if (config.FlavorTextFrequency != FlavorTextFrequency.Never && _currentText == null)
                     {
-                        if (Game1.random.NextDouble() < MessageChance(config.FlavorTextFrequency))
+                        string birthdayName = TryConsumeFirstSitBirthdayCheck();
+                        if (birthdayName != null)
+                            ShowBirthdayLine(birthdayName);
+                        else if (Game1.random.NextDouble() < MessageChance(config.FlavorTextFrequency))
                             ShowRandomSitReliefLine();
                     }
                 }
@@ -181,6 +194,44 @@ namespace SitAndDoStuff
         {
             int index = Game1.random.Next(SitReliefLineCount);
             _currentText = _helper.Translation.Get($"sit-relief-{index}");
+            _messageElapsedMs = 0;
+        }
+
+        // Returns the display name of whoever's birthday it is today, but only the first time this
+        // is called on a given in-game day - every later call the same day returns null without
+        // re-checking, even if the caller never got a name back the first time.
+        private string TryConsumeFirstSitBirthdayCheck()
+        {
+            int today = Game1.Date.TotalDays;
+            if (_lastBirthdayCheckDay == today)
+                return null;
+
+            _lastBirthdayCheckDay = today;
+            return FindTodaysBirthdayVillagerName();
+        }
+
+        // Utility.ForEachVillager only visits real villagers (IsVillager - excludes pets, horses,
+        // monsters) across every location, not just the current one, so this finds a birthday
+        // regardless of where the player's actually sitting. Stops at the first match; vanilla
+        // doesn't appear to allow two villagers sharing a birthday, but this stays simple either way.
+        private static string FindTodaysBirthdayVillagerName()
+        {
+            string name = null;
+            Utility.ForEachVillager(npc =>
+            {
+                if (npc.isBirthday())
+                {
+                    name = npc.displayName;
+                    return false;
+                }
+                return true;
+            });
+            return name;
+        }
+
+        private void ShowBirthdayLine(string name)
+        {
+            _currentText = _helper.Translation.Get("birthday-flavor-text", new { name });
             _messageElapsedMs = 0;
         }
 
