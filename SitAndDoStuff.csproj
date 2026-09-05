@@ -25,4 +25,14 @@
          reference to the mod itself. See GMCMIntegration.cs. -->
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- vendor/decompiled holds decompiled vanilla game source kept purely for reference (checking
+         real implementations before writing code that depends on them - see CLAUDE.md). It isn't
+         part of the mod and must NOT be compiled: the SDK's default globs would otherwise pull
+         these .cs files into the build, where their types collide with the real Stardew Valley.dll
+         types of the same name and fail to compile. -->
+    <Compile Remove="vendor/**/*.cs" />
+    <Compile Remove="ai/**/*.cs" />
+  </ItemGroup>
+
 </Project>

@@ -219,7 +219,20 @@ namespace SitAndDoStuff
         //     nothing while sitting anyway.
         private void OnButtonsChanged(object sender, ButtonsChangedEventArgs e)
         {
-            if (!Context.IsWorldReady || Game1.activeClickableMenu != null || Game1.dialogueUp || Game1.eventUp || Game1.currentMinigame != null || IsMouseOverUi())
+            // Confirmed (see ai/known-issues.md Issue 3): IsMouseOverUi() exists to avoid conflicting
+            // with a genuine mouse click on a persistent on-screen menu (the toolbar) - a concern that
+            // doesn't apply to gamepad input, since a gamepad player selects toolbar items via
+            // dedicated buttons, never by aiming a cursor. On gamepad, though, answering a question
+            // dialogue (e.g. an Arcade System's continue/exit prompt) via SnappyMenus leaves the
+            // virtual snap-cursor parked wherever the last response option was rendered - which can
+            // land squarely inside the toolbar's bounds and stays there indefinitely, since nothing
+            // ever moves a real mouse to reposition it. That made IsMouseOverUi() permanently true
+            // afterward, silently blocking all sitting-interaction handling forever - independent of
+            // activeClickableMenu/dialogueUp actually clearing correctly (confirmed they do). Skipping
+            // the check while Game1.options.gamepadControls is true (the same flag vanilla itself uses
+            // to know it's in gamepad mode) avoids this without touching keyboard/mouse behavior.
+            if (!Context.IsWorldReady || Game1.activeClickableMenu != null || Game1.dialogueUp || Game1.eventUp || Game1.currentMinigame != null
+                || (!Game1.options.gamepadControls && IsMouseOverUi()))
                 return;
 
             Farmer player = Game1.player;
@@ -330,7 +343,22 @@ namespace SitAndDoStuff
                     // "redirect to standing up while sitting" check is gated on !UsingTool, so this
                     // very first press is the ONLY one vanilla would otherwise intercept - we
                     // suppress just this one and start the charge ourselves instead.
-                    SuppressMatching(e, MatchesUseToolButton);
+                    //
+                    // EXCEPT for a gamepad press (ControllerX): confirmed (see known-issues.md
+                    // Issue 1) that for a real gamepad player, suppressing this press leads to
+                    // vanilla's OWN FishingRod.tickUpdate self-releasing the charge within the same
+                    // tick, via its gamepad-branch release check (which reads Game1.input - vanilla's
+                    // own input view, corrupted by suppression for the rest of the hold - not
+                    // anything this mod polls). Instead, for a gamepad press, we skip Suppress()
+                    // entirely and rely on BeginFishingCharge below setting UsingTool=true before the
+                    // game's own Update() runs later this same tick (OnButtonsChanged runs first) -
+                    // vanilla's tool-dispatch call site is ALSO gated on !UsingTool (same fact as
+                    // above), so it skips processing this press at all once UsingTool is already
+                    // true, without suppression ever being involved.
+                    bool viaGamepad = e.Pressed.Contains(SButton.ControllerX);
+                    if (!viaGamepad)
+                        SuppressMatching(e, MatchesUseToolButton);
+
                     SafeTryHeldAction("start fishing", () => HeldActionHandler.BeginFishingCharge(player, Helper.Reflection));
                 }
                 // Releasing to cast is NOT handled here via useToolReleased - suppressing the press

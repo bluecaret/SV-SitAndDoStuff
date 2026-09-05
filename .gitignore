@@ -33,3 +33,6 @@ _releases/
 ai/
 CLAUDE.md
 vendor/*
+
+# Claude Code personal settings
+.claude/settings.local.json
