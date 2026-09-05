@@ -20,10 +20,10 @@ namespace SitAndDoStuff
     {
         // IMPORTANT: update this to match however many "flavor-text-N" entries you actually have in
         // i18n/default.json - it does NOT auto-detect the count.
-        private const int LineCount = 35;
+        private const int LineCount = 101;
 
         // Must match the number of "sit-relief-N" entries in i18n/default.json.
-        private const int SitReliefLineCount = 20;
+        private const int SitReliefLineCount = 68;
 
         // How long a message stays on screen before disappearing. No fade in/out - it just shows
         // and then goes away, by preference.
