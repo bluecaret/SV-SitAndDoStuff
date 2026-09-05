@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
@@ -38,6 +39,26 @@ namespace SitAndDoStuff
         // it was ourselves who hid it.
         private bool _hudHiddenByMod;
 
+        // Harmony patch methods must be static, so this gives them a way to log.
+        private static IMonitor _diagnosticMonitor;
+
+        // True only while THIS mod has a vanilla single-frame animation (currently just eating) in
+        // flight while sitting - see the Halt_Prefix comment below for why this exists and what it
+        // guards against. Never set true by anything other than this mod's own held-action code, and
+        // always cleared the moment that animation is no longer in progress (see OnUpdateTicked) -
+        // this is deliberately scoped so the Halt() patch is a complete no-op for any other mod's
+        // code, or any vanilla path, that might independently produce the same
+        // sitting+PauseForSingleAnimation combination.
+        private static bool _ourHeldActionAnimationInProgress;
+
+        // Tracks whether Game1.player.isEating has actually read true at least once since
+        // _ourHeldActionAnimationInProgress was armed. Needed because isEating is still FALSE for
+        // however long the Yes/No "eat this?" prompt sits unanswered - without this, OnUpdateTicked
+        // had no way to tell "isEating is false because the prompt hasn't been answered yet" apart
+        // from "isEating is false because the animation genuinely finished", and disarmed the fix one
+        // tick after the prompt appeared instead of after the animation actually completed.
+        private static bool _heldActionEatingHasStarted;
+
         public override void Entry(IModHelper helper)
         {
             Config = helper.ReadConfig<ModConfig>();
@@ -51,8 +72,50 @@ namespace SitAndDoStuff
             helper.Events.Display.RenderedWorld += OnRenderedWorld;
             helper.Events.Player.Warped += (_, _) => ClearSession();
 
+            _diagnosticMonitor = Monitor;
+            var harmony = new Harmony(ModManifest.UniqueID);
+            // Confirmed from decompiled Game1.cs (UpdateControlInput): vanilla calls
+            // Game1.player.Halt() every single tick whenever no movement key is held and the player
+            // isn't using a tool - true for essentially the whole eating sequence, standing or
+            // sitting (eating never sets UsingTool, unlike fishing). For a STANDING player this is
+            // harmless: Farmer.Halt()'s own ShowSitting() call is gated on IsSitting(), so it never
+            // fires. For a SITTING player, that gate passes on every one of these per-tick calls,
+            // calling ShowSitting() -> FarmerSprite.setCurrentSingleFrame() - which replaces the
+            // underlying animation-frame list out from under the eating animation while it's still
+            // mid-playback, without resetting the animation index. That permanently breaks the
+            // index/list-length relationship FarmerSprite.currentAnimationTick() depends on to ever
+            // advance again, which is why the eating animation's own completion check
+            // (in animateOnce()) never passes and Farmer.doneEating() never runs - confirmed by two
+            // earlier diagnostic patches on doneEating()/doneWithAnimation() never firing at all,
+            // and a stack-trace-logging prefix on Halt() (both since removed) showing every
+            // problematic call originating from this one vanilla line, not from anything
+            // eating-specific. This is a real vanilla gap: Halt() was never written with the
+            // possibility of a legitimate single-frame animation running while sitting in mind.
+            //
+            // Fix: skip Halt()'s entire original body for this one narrow case. Deliberately scoped
+            // to _ourHeldActionAnimationInProgress (see its own comment) rather than just
+            // IsSitting() && PauseForSingleAnimation, so this can't affect any other mod's code or
+            // any other cause of that same combination - it only ever engages while THIS mod's own
+            // eating flow is actually in progress.
+            harmony.Patch(
+                original: AccessTools.Method(typeof(Farmer), nameof(Farmer.Halt)),
+                prefix: new HarmonyMethod(typeof(ModEntry), nameof(Halt_Prefix)));
+
             Monitor.Log($"Sit and Do Stuff loaded. Built against Stardew Valley 1.6.15 / SMAPI 4.x. " +
                         $"Running under SMAPI {Constants.ApiVersion} on game version {Game1.version}.", LogLevel.Trace);
+        }
+
+        // Returning false skips Farmer.Halt()'s original body entirely. Only ever does so while this
+        // mod's own held-action animation (eating) is genuinely in progress while sitting - see the
+        // comment on the patch registration in Entry() for the full mechanism this prevents. Every
+        // other call to Halt() (standing, idle sitting, anything not triggered by this mod) runs
+        // completely unmodified.
+        private static bool Halt_Prefix(Farmer __instance)
+        {
+            if (_ourHeldActionAnimationInProgress && __instance.IsSitting() && __instance.FarmerSprite.PauseForSingleAnimation)
+                return false;
+
+            return true;
         }
 
         public void SaveConfig() => Helper.WriteConfig(Config);
@@ -139,6 +202,28 @@ namespace SitAndDoStuff
             }
 
             CheckFishingChargeRelease(isSitting);
+
+            // _ourHeldActionAnimationInProgress (see its declaration, and Halt_Prefix) must be
+            // cleared the moment the animation it's guarding is no longer in progress, so the Halt()
+            // fix never stays engaged longer than the single eating attempt it's protecting. isEating
+            // only reads true once the Yes/No prompt has actually been answered "Yes", so it's tracked
+            // separately (_heldActionEatingHasStarted) to tell "hasn't started yet" apart from
+            // "started, then genuinely finished" - both read isEating == false. Also clears on
+            // standing up, or once the prompt closes without eating ever having started (answered
+            // "No", or dismissed), as safety nets.
+            if (_ourHeldActionAnimationInProgress)
+            {
+                if (Game1.player.isEating)
+                {
+                    _heldActionEatingHasStarted = true;
+                }
+                else if (!isSitting || _heldActionEatingHasStarted || !Game1.dialogueUp)
+                {
+                    Monitor.Log("Held-action animation finished (or ended without starting, or sitting ended) - Halt() fix no longer engaged.", LogLevel.Debug);
+                    _ourHeldActionAnimationInProgress = false;
+                    _heldActionEatingHasStarted = false;
+                }
+            }
 
             _wasSittingLastTick = isSitting;
         }
@@ -327,7 +412,14 @@ namespace SitAndDoStuff
                 if (actionPressed)
                 {
                     SuppressMatching(e, MatchesActionButton);
-                    SafeTryHeldAction("eat", () => HeldActionHandler.TryEat(player, Monitor));
+                    // Arms the Halt_Prefix fix (see its declaration) for the duration of this eating
+                    // attempt. Safe to set even before "Yes" is answered (or if "No" is chosen) - the
+                    // fix only actually engages once PauseForSingleAnimation is also true, which only
+                    // happens once the real eating animation starts, and OnUpdateTicked disarms it
+                    // again once the prompt closes without eating starting, or once eating starts and
+                    // then finishes (see _heldActionEatingHasStarted).
+                    if (SafeTryHeldAction("eat", () => HeldActionHandler.TryEat(player, Monitor)))
+                        _ourHeldActionAnimationInProgress = true;
                 }
                 else if (useToolPressed)
                 {

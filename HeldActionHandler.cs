@@ -76,6 +76,20 @@ namespace SitAndDoStuff
             player.faceDirection(2); // 2 = facing down; matches vanilla's own behavior here
             player.itemToEat = activeObject;
 
+            // Confirmed from decompiled Farmer.cs: answering "Yes" calls Farmer.eatHeldObject(),
+            // which does NOT read itemToEat at all - it reads mostRecentlyGrabbedItem, reconciling
+            // it against ActiveItem. That field is normally kept in sync with ActiveObject every
+            // tick by Farmer.showCarrying() - but showCarrying() bails out immediately whenever
+            // IsSitting() is true, so it's never synced while sitting and stays stale (often null).
+            // eatHeldObject() then takes a "swap" path that overwrites the player's actual equipped
+            // toolbar slot with that stale value and calls OnItemReceived(stale, stale.Stack, ...) -
+            // throwing a NullReferenceException when stale is null, and corrupting the toolbar slot
+            // as an uncaught side effect (this is what caused "things get glitchy after standing").
+            // Setting this here mirrors exactly what showCarrying() would have done had the player
+            // been standing, so eatHeldObject() finds ActiveItem/mostRecentlyGrabbedItem already
+            // matching and never takes that path.
+            player.mostRecentlyGrabbedItem = activeObject;
+
             if (Game1.objectData.TryGetValue(activeObject.ItemId, out var objectData))
             {
                 bool isDrink = objectData.IsDrink && activeObject.preserve.Value.GetValueOrDefault() != Object.PreserveType.Pickle;
@@ -84,9 +98,9 @@ namespace SitAndDoStuff
                     : Game1.content.LoadString("Strings\\StringsFromCSFiles:Game1.cs.3160", activeObject.DisplayName);
 
                 // The game's own dialogue-answer dispatcher recognizes "Eat" and calls the real
-                // Farmer.eatObject() when the player answers "Yes" - that's what actually performs
-                // the animation, applies the item's effects, and consumes it. We never call
-                // eatObject() ourselves.
+                // Farmer.eatHeldObject() (which in turn calls eatObject()) when the player answers
+                // "Yes" - that's what actually performs the animation, applies the item's effects,
+                // and consumes it. We never call eatHeldObject()/eatObject() ourselves.
                 Game1.currentLocation.createQuestionDialogue(question, Game1.currentLocation.createYesNoResponses(), "Eat");
             }
 
