@@ -346,9 +346,12 @@ namespace SitAndDoStuff.Targeting
 
             // ---------------------------------------------------------
             // Saloon bar: a map tile property, not an object or character. See
-            // AddSaloonBarTargets below.
+            // AddSaloonBarTargets below. Gated on isSaloon first - the scan itself is an O(range^2)
+            // tile-property lookup (up to 71x71 at the default 35-tile range) that only exits early
+            // once it finds a Saloon-tagged tile, so without this check it would scan the full grid
+            // every time cycling starts in ANY location that isn't actually the Saloon.
             // ---------------------------------------------------------
-            if (config.Get(InteractionCategory.SaloonBar).Enabled && !disabledCategories.Contains(InteractionCategory.SaloonBar))
+            if (isSaloon && config.Get(InteractionCategory.SaloonBar).Enabled && !disabledCategories.Contains(InteractionCategory.SaloonBar))
             {
                 SafeRun(monitor, "checking Saloon bar tiles", () => AddSaloonBarTargets(results, location, config, playerTile));
             }

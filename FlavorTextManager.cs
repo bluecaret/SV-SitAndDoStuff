@@ -10,8 +10,8 @@ namespace SitAndDoStuff
     // small, quiet chat-bubble style (small font, tight box) rather than NPC's own greeting-bubble
     // style (the big blocky "shouting sign" scroll banner from SpriteText.drawStringWithScrollCenteredAt)
     // - a private aside should look and feel different from a shout, by design. See
-    // DrawSmallTextBubbleWithAlpha below for why this is a local reimplementation rather than a
-    // direct call to vanilla's own SpriteText.drawSmallTextBubble.
+    // DrawSmallTextBubble below for why this is a local reimplementation rather than a direct call
+    // to vanilla's own SpriteText.drawSmallTextBubble.
     //
     // Two line pools share this pipeline and MessageChance(): the recurring "flavor-text-N" pool
     // (a chance-roll every RecurringCheckIntervalMs while sitting) and the one-shot "sit-relief-N"

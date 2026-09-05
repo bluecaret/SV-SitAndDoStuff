@@ -46,7 +46,7 @@ namespace SitAndDoStuff.Targeting
             // clip naturally at the screen edge like any other world object would, since it only
             // makes sense drawn exactly on the object's own tile(s).
             if (config.ShowTargetHighlight)
-                DrawSquareOutline(b, screenPos, footprintPixelWidth, footprintPixelHeight, ParseColor(config.HighlightColor));
+                DrawSquareOutline(b, screenPos, footprintPixelWidth, footprintPixelHeight, GetCachedColor(config.HighlightColor));
 
             // The arrow and label sit further above the footprint still (ExtraHeightAboveFootprint
             // Pixels, plus their own gaps) - clamp just their anchor to stay on screen even when the
@@ -168,6 +168,21 @@ namespace SitAndDoStuff.Targeting
             Vector2 origin = new Vector2(ArrowFrameSize / 2f, ArrowFrameSize / 2f);
 
             b.Draw(Game1.mouseCursors, center, sourceRect, Color.White, rotation, origin, ArrowScale, SpriteEffects.None, 1f);
+        }
+
+        // Caches the last-parsed hex string and its Color, so a fixed config value (the common case)
+        // isn't re-parsed on every single draw call (up to 60x/sec while something's highlighted).
+        private static string _lastParsedHex;
+        private static Color _lastParsedColor = Color.Yellow;
+
+        private static Color GetCachedColor(string hex)
+        {
+            if (hex != _lastParsedHex)
+            {
+                _lastParsedHex = hex;
+                _lastParsedColor = ParseColor(hex);
+            }
+            return _lastParsedColor;
         }
 
         private static Color ParseColor(string hex)

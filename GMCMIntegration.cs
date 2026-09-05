@@ -103,13 +103,13 @@ namespace SitAndDoStuff
             api.AddSectionTitle(manifest, () => "Eat/Fish (experimental)");
             api.AddBoolOption(manifest,
                 () => Config().AllowEatingWhileSitting, v => Config().AllowEatingWhileSitting = v,
-                () => "Allow Eating While Sitting.",
-                () => "With nothing targeted: press \"Check/Do Action\" to eat. " + 
+                () => "Allow Eating While Sitting",
+                () => "With nothing targeted: press \"Check/Do Action\" to eat. " +
                         "Animations may be glitchy. This is an experimental feature.");
             api.AddBoolOption(manifest,
                 () => Config().AllowFishingWhileSitting, v => Config().AllowFishingWhileSitting = v,
                 () => "Allow Fishing While Sitting",
-                () => "With nothing targeted: press and hold \"Use Tool\" to charge a fishing cast (release to cast)" + 
+                () => "With nothing targeted: press and hold \"Use Tool\" to charge a fishing cast (release to cast). " +
                         "Animations may be glitchy. This is an experimental feature.");
 
             // ---------------- NPC settings ----------------

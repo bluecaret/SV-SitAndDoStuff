@@ -37,9 +37,6 @@ namespace SitAndDoStuff
         // True only while OUR toggle hid the HUD, so we don't restore it if something else hid it.
         private bool _hudHiddenByMod;
 
-        // Harmony patch methods must be static, so this gives them a way to log.
-        private static IMonitor _diagnosticMonitor;
-
         // True while THIS mod's own eating-while-sitting animation is in flight - scopes the
         // Halt_Prefix patch below to just that, never other mods or vanilla's own calls. Cleared by
         // OnUpdateTicked once the animation ends.
@@ -64,7 +61,6 @@ namespace SitAndDoStuff
             helper.Events.Display.RenderedWorld += OnRenderedWorld;
             helper.Events.Player.Warped += (_, _) => ClearSession();
 
-            _diagnosticMonitor = Monitor;
             var harmony = new Harmony(ModManifest.UniqueID);
             // Vanilla calls Game1.player.Halt() every tick while idle (Game1.UpdateControlInput).
             // Harmless while standing, but for a sitting player it re-fires ShowSitting() ->
@@ -277,8 +273,9 @@ namespace SitAndDoStuff
             // ---- Cycling: available regardless of what's targeted, but only if at least one
             // ---- visual indicator is on - with all three off, there'd be no way to see what (if
             // ---- anything) got targeted, so cycling is treated as a disabled feature instead.
-            bool cycleLeft = TargetHighlightsEnabled() && e.Pressed.Any(MatchesMoveLeftButton);
-            bool cycleRight = TargetHighlightsEnabled() && e.Pressed.Any(MatchesMoveRightButton);
+            bool highlightsEnabled = TargetHighlightsEnabled();
+            bool cycleLeft = highlightsEnabled && e.Pressed.Any(MatchesMoveLeftButton);
+            bool cycleRight = highlightsEnabled && e.Pressed.Any(MatchesMoveRightButton);
             if (cycleLeft || cycleRight)
             {
                 Func<SButton, bool> cycleMatcher = cycleLeft ? MatchesMoveLeftButton : MatchesMoveRightButton;
